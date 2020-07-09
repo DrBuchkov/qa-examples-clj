@@ -23,8 +23,8 @@
     (.getHistory stock from to Interval/DAILY)))
 
 (def spy-quotes
-  (let [from (zoned-date-time->calendar (nyse-market-close-date-time 2001 11 26))
-        to (zoned-date-time->calendar (nyse-market-open-date-time 2007 11 14))
+  (let [from (zoned-date-time->calendar (nyse-market-open-date-time 2001 11 26))
+        to (zoned-date-time->calendar (nyse-market-close-date-time 2007 11 14))
         stock (YahooFinance/get "SPY")]
     (.getHistory stock from to Interval/DAILY)))
 
@@ -32,4 +32,8 @@
 
 (def spy-ds (quotes->ds spy-quotes spy-cols))
 
-(def long-short-ds (i/$join [:date :date] ige-ds spy-ds))
+(def long-short-ds (let [ige-daily-ret (drop 1 (ds/column ige-ds :daily-ret-ige))
+                         spy-daily-ret (drop 1 (ds/column spy-ds :daily-ret-spy))
+                         net-daily-ret (concat [nil] (map (fn [ige-ret spy-ret] (/ (- ige-ret spy-ret) 2)) ige-daily-ret spy-daily-ret))]
+                     (-> (i/$join [:date :date] ige-ds spy-ds)
+                         (ds/add-column :net-daily-ret net-daily-ret))))
